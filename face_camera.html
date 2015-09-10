@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>tracking.js - face with camera</title>
+  <link rel="stylesheet" href="assets/demo.css">
+<link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+  <script src="build/tracking-min.js"></script>
+  <script src="build/data/face-min.js"></script>
+  <!--script src="assets/stats.min.js"></script--->
+  <script src="build/jquery-2.1.4.min.js"></script>
+
+</head>
+<body>
+  <div class="demo-title">
+    <p><a href="http://trackingjs.com" target="_parent">headbang.js</a> - Press the button and start headbanging, Based off of <a href="http://trackingjs.com" target="_parent">tracking.js</a></p>
+  </div>
+
+  <div class="demo-frame">
+              We track your head's movement up and down so make sure to keep your head clearly visible.
+          <video id="video" width="320" height="240" preload autoplay loop muted></video>
+      <!--canvas id="canvas" width="320" height="240"></canvas-->
+
+  </div>
+  <div id="controls">
+      <button id="headBang" onclick="javascript:DoClick()" style="margin: 0 auto 0;top:40px;position:relative;">Start Head Banging</button>
+    </div>
+  <div style="width:280px;height:157px;position:relative;margin:0 auto 0;top:40px">
+    <iframe id="youtubeVideo" style="0 auto 0;position:relative" width="280" height="157" src="" frameborder="0" allowfullscreen></iframe>
+    
+  </div>
+
+
+
+  <script>
+  var youTubeKey = "AIzaSyDbbYEX5aXzRMN_iEWkq2Y-2o3oAFlcy4s";
+  var record = false;
+  var last_y = 0;
+  var eventRecorder = [];
+  var tracking
+  var tracker
+    window.onload = function() {
+      var video = document.getElementById('video');
+
+      tracker = new tracking.ObjectTracker('face');
+      tracker.setInitialScale(4);
+      tracker.setStepSize(2);
+      tracker.setEdgesDensity(0.1);
+
+      tracking.track('#video', tracker, { camera: true });
+
+      tracker.on('track', function(event) {
+        event.data.forEach(function(rect) {
+          
+          if(record)
+          {
+            if(last_y + 5 < rect.y)
+            {
+              eventRecorder.push(new Date().getTime());
+            }
+            last_y = rect.y;
+          }
+        });
+      });
+    };
+    
+      function DoClick(){
+        setTimeout(stopIt, 5000)
+        record = true;
+        document.getElementById('headBang').innerHTML = "Recording for 5 seconds.."
+      }
+    function stopIt()
+    {
+      // tracking.stop();
+      record = false;
+      console.log(eventRecorder)
+      secs = CrunchIt()
+      bpm = parseInt((1/secs)*60)
+      minBpm = bpm - 5;
+      maxBpm = bpm + 5;
+      document.getElementById('headBang').innerHTML = "DONE - " + bpm + "bpm"
+      eventRecorder = [];
+      last_y = 0;
+      getMusic(minBpm, maxBpm)
+    }
+    
+    function getMusic(minBpm, maxBpm)
+    {
+      $.ajax({url:"https://developer.echonest.com/api/v4/song/search?api_key=YILQNSV8OMZ3WEHEU&format=json&min_tempo="+minBpm+"&max_tempo="+maxBpm, dataType: 'json', crossOrigin: true, jsonpCallback: 'callback', success: songCallback})
+    }
+    function songCallback(data)
+    {
+      index = Math.floor(Math.random() * (data["response"]["songs"].length));
+      songSearch = data["response"]["songs"][index]["artist_name"] + " - " + data["response"]["songs"][index]["title"]
+      GetVideo(songSearch);
+    }
+    function processVideo(data)
+    {
+      if(data)
+      {
+       id = data["items"][0]["id"]["videoId"]
+       source = "https://www.youtube.com/embed/"+id+"?rel=0&autoplay=1&start=30"
+       document.getElementById('youtubeVideo').setAttribute("src", source);
+      }
+    }
+    function GetVideo(name)
+    {
+      $.ajax({url:"https://www.googleapis.com/youtube/v3/search?q=" + name + "&part=snippet&&type=video&order=viewcount&limit=1&key="+youTubeKey, dataType: 'jsonp', success: processVideo})
+    }
+    
+    function CrunchIt()
+    {
+      diff= 0;
+      for(i=1;i<eventRecorder.length;i++)
+      {
+        diff += (eventRecorder[i] - eventRecorder[i-1])/1000
+      }
+      return diff/eventRecorder.length;
+    }
+    
+ 
+
+  </script>
+
+</body>
+</html>
